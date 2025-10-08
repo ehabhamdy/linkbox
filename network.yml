@@ -1,0 +1,22 @@
+Description: >
+  Ehab / Udacity
+  This template deploys the network infrastructure
+
+Parameters:
+    EnvironmentName:
+        Description: Name tag to apply to resources
+        Type: String
+        Default: UdacityNetwork
+
+Resources:
+    VPC:
+      Type: AWS::EC2::VPC
+      Metadata:
+        LastUpdated: "2025-10-08" 
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        EnableDnsHostnames: true
+        Tags:
+          - Key: Name
+            Value: !Ref EnvironmentName
+        
