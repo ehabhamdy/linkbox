@@ -131,6 +131,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${EnvironmentName}-ASG"
+          PropagateAtLaunch: true
 
   # Load Balancer
   WebAppLB:
@@ -181,3 +182,10 @@ Resources:
       VpcId: 
         Fn::ImportValue:
           !Sub "${EnvironmentName}-VPCID"
+
+Outputs:
+  WebAppLoadBalancerDNSName:
+    Description: DNS name of the load balancer
+    Value: !Join ['', ['http://', !GetAtt WebAppLB.DNSName]]
+    Export:
+      Name: !Sub "${EnvironmentName}-LB-DNSName"
