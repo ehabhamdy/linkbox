@@ -17,4 +17,5 @@ aws cloudformation deploy \
     --stack-name "$STACK_NAME" \
     --template-file "$TEMPLATE_FILE" \
     --parameter-overrides file://"$PARAMETER_FILE" \
+    --capabilities CAPABILITY_NAMED_IAM \
     --region us-east-1
