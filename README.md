@@ -61,6 +61,46 @@ This project contains CloudFormation templates and scripts to deploy network inf
    - SSH to bastion: `ssh -i bastion-access.pem ubuntu@<BASTION-IP>`
    - Port forward to database: `ssh -i bastion-access.pem -N -L 5432:<DB-ENDPOINT>:5432 ubuntu@<BASTION-IP>`
 
+## Accessing Instances with Session Manager
+
+The EC2 instances in this infrastructure are configured with AWS Systems Manager Session Manager, which provides secure access without SSH keys or open SSH ports.
+
+### Prerequisites for Session Manager
+- AWS CLI installed and configured
+- Session Manager plugin installed: [Installation Guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
+
+### Connect to Web Server Instances
+
+**Find instance IDs:**
+```bash
+aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=udacity-project-ASG" \
+    --query 'Reservations[*].Instances[*].[InstanceId,Tags[?Key==`Name`].Value|[0],State.Name]' \
+    --output table
+```
+
+**Start a session:**
+```bash
+aws ssm start-session --target i-09b1e6f307304f808
+```
+
+**Connect to a specific instance (replace with actual instance ID):**
+```bash
+aws ssm start-session --target <INSTANCE-ID>
+```
+
+**Check SSM agent status on the instance:**
+```bash
+sudo systemctl status snap.amazon-ssm-agent.amazon-ssm-agent.service
+```
+
+### Session Manager Benefits
+- ✅ No SSH keys required
+- ✅ No open SSH ports (port 22) needed
+- ✅ Full audit trail through CloudTrail
+- ✅ Secure access through AWS IAM permissions
+- ✅ Works with instances in private subnets
+
 ## Check Caller Identity
 
 Make sure that the caller identity is the as expected.

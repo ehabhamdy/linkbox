@@ -111,6 +111,11 @@ Resources:
             sudo apt-get update -y
             sudo apt-get install nginx -y
             sudo service nginx start
+            
+            # Install SSM Agent
+            sudo snap install amazon-ssm-agent --classic
+            sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+            sudo systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
         ImageId: ami-0557a15b87f6559cf
         KeyName: !Ref KeyPairName
         SecurityGroupIds:
@@ -158,6 +163,8 @@ Resources:
             - 'ec2.amazonaws.com'
           Action:
           - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       Policies:
         - PolicyName: s3
           PolicyDocument:
