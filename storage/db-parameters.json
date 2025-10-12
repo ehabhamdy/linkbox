@@ -1,0 +1,18 @@
+[
+    {
+        "ParameterKey": "EnvironmentName",
+        "ParameterValue": "udacity-project"
+    },
+    {
+        "ParameterKey": "RDSInstanceName",
+        "ParameterValue": "udacity-rds-instance"
+    },
+    {
+        "ParameterKey": "RdsMasterUsername",
+        "ParameterValue": "udacity"
+    },
+    {
+        "ParameterKey": "RdsMasterPassword",
+        "ParameterValue": "%XjHNtW8$6*8"
+    }
+]

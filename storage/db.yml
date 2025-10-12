@@ -1,0 +1,94 @@
+Parameters:
+
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+
+  RDSInstanceName:
+    Description: Name for this RDS instance
+    Type: String
+
+  RdsMasterUsername:
+    Type: String
+    Description: Username for the RDS database
+
+  RdsMasterPassword:
+    Type: String
+    Description: Password for the RDS database
+
+Resources:
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref RDSInstanceName
+      GroupDescription: DB Security group for RDS example
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        CidrIp: 10.10.0.0/24
+        Description: PostgreSQL from private subnet
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        SourceSecurityGroupId:
+          Fn::ImportValue:
+            !Sub "${EnvironmentName}-BastionSecGroup"
+        Description: PostgreSQL from bastion host
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Ref RDSInstanceName
+      DBSubnetGroupDescription: DB subnet group for RDS example
+      SubnetIds: !Split
+      - ","
+      - Fn::ImportValue:
+          !Sub "${EnvironmentName}-PRIV-NETS"
+
+  DBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      DBParameterGroupName: !Ref RDSInstanceName
+      Description: Custom parameter group for RDS example
+      Family: postgres17
+      Parameters:
+        synchronous_commit: 'off'
+        rds.force_ssl: 1
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      AllocatedStorage: '20'
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true      
+      DBName: exampledb
+      DBInstanceClass: db.t3.micro
+      DBInstanceIdentifier: !Ref RDSInstanceName
+      VPCSecurityGroups:
+        - !Ref SecurityGroup
+      Engine: postgres
+      EngineVersion: "17.6"
+      DeletionProtection: false
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBParameterGroupName: !Ref DBParameterGroup
+      MasterUsername: !Ref RdsMasterUsername
+      MasterUserPassword: !Ref RdsMasterPassword
+
+Outputs:
+  DBEndpoint:
+    Description: Database endpoint address
+    Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub "${EnvironmentName}-DB-Endpoint"
+  
+  DBPort:
+    Description: Database port
+    Value: !GetAtt DBInstance.Endpoint.Port
+    Export:
+      Name: !Sub "${EnvironmentName}-DB-Port"

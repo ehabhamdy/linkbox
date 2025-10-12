@@ -19,9 +19,45 @@ Parameters:
     Description: The maximum size of the auto scaling group
     Type: Number
     Default: 3
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the bastion host
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair
+  MyPublicIP:
+    Description: Your public IP address in CIDR notation (e.g., 203.0.113.0/32)
+    Type: String
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: must be a valid IP CIDR range (e.g., x.x.x.x/32)
 
 Resources:
   # Security Groups
+  BastionSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access to bastion host from your IP and EC2 Instance Connect
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !Ref MyPublicIP
+        Description: SSH from your IP
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 18.206.107.24/29
+        Description: EC2 Instance Connect us-east-1
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-BastionSecGroup"
+
   LBSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -41,7 +77,7 @@ Resources:
   WebServerSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow http access to our hosts from the LB Security Group
+      GroupDescription: Allow http access to our hosts from the LB Security Group and SSH from bastion
       VpcId:
         Fn::ImportValue:
           !Sub "${EnvironmentName}-VPCID"
@@ -50,6 +86,10 @@ Resources:
         FromPort: 80
         ToPort: 80
         SourceSecurityGroupId: !Ref LBSecGroup
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        SourceSecurityGroupId: !Ref BastionSecGroup
       SecurityGroupEgress:
       - IpProtocol: tcp
         FromPort: 0
@@ -112,6 +152,30 @@ Resources:
       Path: '/'
       Roles:
       - !Ref WebAppInstanceRole
+
+  # Bastion Host
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0557a15b87f6559cf
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds:
+        - !Ref BastionSecGroup
+      SubnetId:
+        Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-BastionHost"
+
+  BastionEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref BastionHost
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-BastionEIP"
 
   # Auto Scaling Group
   WebAppGroup:
@@ -189,3 +253,21 @@ Outputs:
     Value: !Join ['', ['http://', !GetAtt WebAppLB.DNSName]]
     Export:
       Name: !Sub "${EnvironmentName}-LB-DNSName"
+  
+  BastionHostPublicIP:
+    Description: Public IP address of the bastion host
+    Value: !Ref BastionEIP
+    Export:
+      Name: !Sub "${EnvironmentName}-BastionIP"
+  
+  BastionHostID:
+    Description: Instance ID of the bastion host
+    Value: !Ref BastionHost
+    Export:
+      Name: !Sub "${EnvironmentName}-BastionInstanceID"
+  
+  BastionSecurityGroupID:
+    Description: Security Group ID of the bastion host
+    Value: !Ref BastionSecGroup
+    Export:
+      Name: !Sub "${EnvironmentName}-BastionSecGroup"

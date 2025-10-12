@@ -2,5 +2,13 @@
     {
         "ParameterKey": "EnvironmentName",
         "ParameterValue": "udacity-project"
+    },
+    {
+        "ParameterKey": "KeyPairName",
+        "ParameterValue": "basion-access"
+    },
+    {
+        "ParameterKey": "MyPublicIP",
+        "ParameterValue": "92.72.51.15/32"
     }
 ]
