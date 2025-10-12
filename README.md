@@ -372,7 +372,7 @@ ssh ubuntu@<PRIVATE-INSTANCE-IP>
 ssh-add your-key.pem
 
 # Connect with agent forwarding
-ssh -A ubuntu@<BASTION-PUBLIC-IP>
+ssh -A -i your-key.pem ubuntu@<BASTION-PUBLIC-IP>
 
 # Now you can SSH to private instances without the key being on bastion
 ssh ubuntu@<PRIVATE-INSTANCE-IP>
