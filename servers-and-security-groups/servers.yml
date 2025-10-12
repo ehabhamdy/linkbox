@@ -122,6 +122,28 @@ Resources:
         IamInstanceProfile:
           Name: !Ref WebAppInstanceProfile
 
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvironmentName}-website-bucket"
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 30
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
   WebAppInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -142,9 +164,16 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
-              - 's3:GetObject'
+              - 's3:ListBucket'
               Resource:
-                - !Sub "arn:aws:s3:::website-bucket/*"
+                - !GetAtt S3Bucket.Arn
+            - Effect: Allow
+              Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              Resource:
+                - !Sub "${S3Bucket.Arn}/*"
 
   WebAppInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -164,6 +193,7 @@ Resources:
         - !Ref BastionSecGroup
       SubnetId:
         Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+      IamInstanceProfile: !Ref WebAppInstanceProfile
       Tags:
         - Key: Name
           Value: !Sub "${EnvironmentName}-BastionHost"
