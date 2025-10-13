@@ -1,31 +1,145 @@
-# AWS CloudFormation Network Infrastructure
+<div align="center">
 
-This project contains CloudFormation templates and scripts to deploy network infrastructure on AWS.
+# LinkBox
 
-## Prerequisites
+Minimal personal file‑sharing: upload one file, receive a short link.
 
-- AWS CLI installed and configured with valid credentials
-- Appropriate IAM permissions to create VPC, subnets, internet gateways, NAT gateways, EC2 instances, RDS databases, and related resources
-- EC2 Key Pair created in your AWS account (for bastion host access)
-- Bash shell (Linux, macOS, or WSL on Windows)
+</div>
 
-## Project Structure
+## Overview
 
-### Network Infrastructure
-- `networking/network.yml` - CloudFormation template for VPC, subnets, and network resources
-- `networking/network-parameters.json` - Parameter file for network configuration
+LinkBox provides a FastAPI backend to generate S3 presigned uploads and store metadata in PostgreSQL, plus a React (Vite) frontend for the single‑page upload experience. Infrastructure is defined via modular CloudFormation templates (network, database, backend, frontend) and CI/CD buildspecs for automated builds.
 
-### Servers and Security Groups
-- `servers-and-security-groups/servers.yml` - CloudFormation template for EC2 instances, Auto Scaling Group, Load Balancer, and Bastion Host
-- `servers-and-security-groups/servers-parameters.json` - Parameter file for server configuration
+## Architecture
 
-### Database
-- `storage/db.yml` - CloudFormation template for RDS PostgreSQL database
-- `storage/db-parameters.json` - Parameter file for database configuration
+| Component | Purpose |
+|-----------|---------|
+| FastAPI Backend | Issues presigned POST, persists file metadata, health endpoint |
+| PostgreSQL (RDS) | Stores file records (id, original filename, s3 key, size, timestamps) |
+| S3 Bucket | Object storage (uploads/...) |
+| CloudFront | Serves static frontend + proxies /api/* to ALB/backend |
+| ALB + ASG | Runs containerized FastAPI (scalable) |
 
-### Scripts
-- `deploy.sh` - Script to deploy/update CloudFormation stacks
-- `delete.sh` - Script to delete CloudFormation stacks
+Future options: replace ASG with ECS Fargate or Lambda, add download tokenization, antivirus scanning, expiration policies.
+
+## Repository Structure
+
+```
+backend/        FastAPI application code & Dockerfile
+frontend/       React + TypeScript uploader (Vite)
+infrastructure/ CloudFormation templates (01..04 + main.yml orchestrator)
+cicd/           CodeBuild buildspecs for backend & frontend
+.gitignore
+README.md
+```
+
+Legacy experimental infrastructure directories have been removed to keep the repo minimal. (If needed, recover them from git history.)
+
+## Backend
+
+Key endpoints:
+- POST /generate-presigned-url
+- GET  /files/{file_id}
+- GET  /health
+
+Environment variables (`backend/ENV.EXAMPLE`):
+```
+S3_BUCKET_NAME=linkbox-uploads-example
+AWS_REGION=us-east-1
+DATABASE_URL=postgresql://user:pass@host:5432/linkbox
+PRESIGNED_EXPIRY_SECONDS=3600
+MAX_UPLOAD_BYTES=10485760
+CLOUDFRONT_DOWNLOAD_DOMAIN=dxxxxxxxx.cloudfront.net (optional)
+```
+
+Local run:
+```bash
+cd backend
+cp ENV.EXAMPLE .env && edit .env
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+## Frontend
+
+Dev server (proxy /api -> backend):
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Build static assets:
+```bash
+npm run build
+```
+
+## Infrastructure
+
+Templates (simplified skeletons):
+
+1. 01-network.yml – VPC, subnets, NAT, routing.
+2. 02-database.yml – RDS PostgreSQL (snapshot on delete).
+3. 03-backend.yml – ALB, TargetGroup, Listener, IAM Role, LaunchTemplate, ASG (runs Docker image).
+4. 04-frontend.yml – S3 (private, OAI), CloudFront (default static + /api/* pass-through).
+5. main.yml – Example nested stack orchestrator (update TemplateURL S3 paths for your deployment bucket).
+
+### Diagrams
+
+See `infrastructure/diagram-mermaid.md` (view directly in many editors) or render the PlantUML version `infrastructure/diagram-plantuml.puml`.
+
+Mermaid preview (simplified):
+
+```mermaid
+graph LR
+  U[User]-->CF[CloudFront]
+  CF-->S3FE[S3 Static]
+  CF-->ALB[ALB]
+  ALB-->API[FastAPI EC2]
+  API-->RDS[(PostgreSQL)]
+  API-->S3UP[S3 Uploads]
+  U-->S3UP
+```
+
+Parameters you typically supply: EnvironmentName, AmiId, ECRImageUrl, DBUsername, DBPassword.
+
+## CI/CD
+
+CodePipeline (concept):
+1. Source: GitHub main branch.
+2. Build (parallel):
+  - Backend (buildspec-backend.yml) -> push image to ECR; produce imagedefinitions.json.
+  - Frontend (buildspec-frontend.yml) -> build & sync dist/ to S3; invalidate CloudFront.
+3. Deploy: CloudFormation update of backend & frontend stacks (or nested main stack).
+
+## Roadmap / Hardening
+
+| Area | Improvement |
+|------|-------------|
+| Security | Restrict IAM S3 actions to bucket ARN/prefix; add KMS CMKs for S3 & RDS |
+| Privacy | Store original filename encrypted; generate opaque object keys (no filename) |
+| Downloads | Provide time‑limited presigned GET URLs or backend redirect authorization |
+| Expiry | Add expires_at column + cleanup Lambda (S3 + DB purge) |
+| Scanning | S3 event -> Lambda -> ClamAV layer; quarantine until clean |
+| Observability | Structured JSON logs, metrics (uploads count, bytes), tracing (X-Ray) |
+| Scale | ASG policies (CPU / requests); consider ECS Fargate or Lambda for bursty workloads |
+| Cost | S3 lifecycle transitions, RDS storage autoscaling, NAT gateway optimization (one AZ or replace with Instance for dev) |
+
+## Local Testing Enhancements (Optional)
+
+Use LocalStack for S3:
+```bash
+docker run -p 4566:4566 -e SERVICES=s3 localstack/localstack
+aws --endpoint-url http://localhost:4566 s3 mb s3://linkbox-local
+```
+Then set boto3 client endpoint + bucket name accordingly.
+
+## License
+
+MIT (adjust if needed).
+
+---
+
+Have fun sharing files responsibly ✨
 
 ## Quick Start
 
@@ -537,4 +651,136 @@ If browser-based connection fails:
 ## Region Configuration
 
 By default, stacks are deployed to `us-east-1`. To change the region, modify the `--region` parameter in the scripts or CLI commands.
+
+---
+
+# LinkBox Application (Monorepo Scaffold)
+
+LinkBox is a minimalist personal file-sharing application. Upload a file, receive a short link, share it.
+
+## High-Level Flow
+
+1. Browser requests a presigned upload (filename + content type) from the FastAPI backend.
+2. Backend generates short ID, records metadata in PostgreSQL, returns S3 presigned POST (form fields + URL) and a future download link.
+3. Browser directly uploads file to S3 with the presigned form.
+4. User is shown the shareable link (CloudFront -> S3 object or backend redirect path).
+5. Anyone with the link can fetch (future: enforce expiry / auth / virus scan).
+
+## Repository Structure (Added)
+
+```
+backend/        # FastAPI service (presign + metadata)
+frontend/       # React + Vite single-page uploader
+infrastructure/ # New CloudFormation nested stack templates (network/db/backend/frontend)
+cicd/           # CodeBuild buildspecs for backend & frontend
+```
+
+Legacy infra templates remain under `networking/`, `servers-and-security-groups/`, and `storage/` for reference; the new `infrastructure/` directory houses a cohesive set for LinkBox.
+
+## Backend (FastAPI)
+
+Key endpoint:
+
+- `POST /generate-presigned-url` -> returns: `{ upload_url, form_fields, file_id, download_url }`
+- `GET /files/{file_id}` -> returns metadata
+- `GET /health` -> health probe
+
+Environment variables (see `backend/ENV.EXAMPLE`):
+
+| Var | Purpose |
+|-----|---------|
+| S3_BUCKET_NAME | Target bucket for uploads |
+| AWS_REGION | Region for boto3 client |
+| DATABASE_URL | SQLAlchemy URL for PostgreSQL |
+| PRESIGNED_EXPIRY_SECONDS | Validity window for upload form |
+| MAX_UPLOAD_BYTES | Enforced max size (client + policy) |
+| CLOUDFRONT_DOWNLOAD_DOMAIN | If set, forms download link as https://domain/files/<id> |
+
+### Local Dev (Backend)
+
+```bash
+cd backend
+cp ENV.EXAMPLE .env  # edit values
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+## Frontend (React + Vite)
+
+Dev proxy sends `/api/*` to `http://localhost:8000`.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Build artifacts land in `frontend/dist/` for S3 + CloudFront deployment.
+
+## Infrastructure (CloudFormation Skeleton)
+
+New templates (simplified skeletons — adjust for production):
+
+1. `01-network.yml` - VPC, 2 public + 2 private subnets, single NAT (cost-optimized), routing.
+2. `02-database.yml` - RDS PostgreSQL (single-AZ for cost now, snapshot on delete).
+3. `03-backend.yml` - ALB, Target Group, Listener, IAM role, Launch Template, ASG (runs containerized FastAPI).
+4. `04-frontend.yml` - S3 bucket (private + OAI), CloudFront distribution (default root + /api/* behavior to ALB).
+5. `main.yml` - Example nested orchestrator (replace TemplateURL with your artifact bucket paths).
+
+## CI/CD Overview
+
+- `cicd/buildspec-backend.yml`: Build & push Docker image to ECR (tags: commit hash + latest).
+- `cicd/buildspec-frontend.yml`: Build static site, sync to S3, invalidate CloudFront.
+
+You can wire these into a CodePipeline with GitHub source + two parallel CodeBuild actions and a CloudFormation deploy stage that updates the backend stack (to refresh the ASG launch template with a new image tag) and syncs the frontend bucket.
+
+## Hardening / Next Steps
+
+Security & Privacy:
+- Generate truly unique object keys that do not expose original filename (keep original separately).
+- Add signed download URLs (time-limited) instead of public object URLs.
+- Implement optional password or one-time download semantics.
+- Integrate ClamAV or a scanning Lambda via S3 ObjectCreated event before marking file active.
+- Enforce MIME type validation & size limit server-side (current limit is policy-only).
+
+Resilience & Scale:
+- Multi-AZ RDS (set `MultiAZ: true`).
+- Add ALB health checks and scale policies (CPU / request rate) in ASG.
+- Consider moving presign API to AWS Lambda + API Gateway for near-zero idle cost.
+
+Cost Optimization:
+- Use Graviton (t4g) instances or Fargate Spot if containerizing on ECS.
+- Lifecycle policy for old ECR images.
+- S3 lifecycle transitions (e.g., move old uploads to Infrequent Access / Glacier after N days).
+
+Observability:
+- Add structured logging (JSON) + CloudWatch log group retention.
+- Emit metrics: presigns issued, uploads completed, bytes stored, errors.
+- Add tracing (AWS X-Ray) if adopting microservices.
+
+Data & Expiry:
+- Add `expires_at` column; background job or Lambda to purge old objects + DB rows.
+- Optional total download count limit.
+
+Compliance & Governance:
+- Bucket policy least-privilege: restrict IAM role to specific bucket ARN prefix instead of '*'.
+- Parameterize encryption (S3 SSE-KMS + RDS KMS key).
+
+Testing:
+- Add pytest integration tests mocking S3 with moto.
+- Frontend Cypress test for full upload flow (mock backend or localstack).
+
+## Local S3 Mock (Optional)
+Use `localstack` for offline testing of presigned flows.
+
+```bash
+docker run -p 4566:4566 -e SERVICES=s3 localstack/localstack
+aws --endpoint-url http://localhost:4566 s3 mb s3://linkbox-local
+```
+
+Then set `S3_BUCKET_NAME=linkbox-local` and configure boto3 with that endpoint.
+
+---
+
+Original network infrastructure documentation follows below for reference.
 

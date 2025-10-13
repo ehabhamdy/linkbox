@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.env.*
+ENV.EXAMPLE
+
+# Node
+node_modules/
+frontend/dist/
+
+# Byte-compiled / cache
+*.sqlite3
+
+# Docker
+*.log
+
+# MacOS
+.DS_Store
