@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: LinkBox - RDS PostgreSQL
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: linkbox
+  DBUsername:
+    Type: String
+    Default: linkbox
+  DBPassword:
+    Type: String
+    NoEcho: true
+  DBInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+
+Resources:
+  SecurityGroupDB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS access from backend
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:VpcId" } }
+      SecurityGroupIngress: []  # Inbound opened by backend template via update or use SG reference
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-db-sg'
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for RDS
+      SubnetIds: !Split [',', { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:PrivateSubnets" } }]
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-db-subnets'
+
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      Engine: postgres
+      EngineVersion: '15'
+      DBName: linkbox
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref SecurityGroupDB
+      BackupRetentionPeriod: 7
+      StorageEncrypted: true
+      AutoMinorVersionUpgrade: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-postgres'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # SSM Parameter for DB Endpoint (used by EC2 instances)
+  DBEndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${EnvironmentName}/db-endpoint'
+      Type: String
+      Value: !GetAtt PostgresDB.Endpoint.Address
+      Description: RDS PostgreSQL endpoint address
+      Tags:
+        Project: LinkBox
+        Environment: !Ref EnvironmentName
+
+Outputs:
+  DBEndpoint:
+    Value: !GetAtt PostgresDB.Endpoint.Address
+    Export:
+      Name: !Sub '${EnvironmentName}:DBEndpoint'
+  DBSecurityGroupId:
+    Value: !Ref SecurityGroupDB
+    Export:
+      Name: !Sub '${EnvironmentName}:DBSecurityGroupId'
+  DBEndpointParameterName:
+    Value: !Ref DBEndpointParameter
+    Export:
+      Name: !Sub '${EnvironmentName}:DBEndpointParameter'

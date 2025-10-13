@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: LinkBox - Master Stack (nested)
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: linkbox
+    Description: Environment name prefix for all resources
+  TemplatesBucketName:
+    Type: String
+    Description: S3 bucket containing nested CloudFormation templates
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: Amazon Linux 2 AMI ID
+  ECRImageUrl:
+    Type: String
+    Description: ECR image URL (repository:tag)
+  DBUsername:
+    Type: String
+    Default: linkbox
+    Description: Database master username
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Database master password
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository (e.g., username/repo-name)
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: GitHub branch to deploy from
+  GitHubToken:
+    Type: String
+    NoEcho: true
+    Description: GitHub personal access token
+
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/01-network.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-network-stack'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  DatabaseStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/02-database.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        DBUsername: !Ref DBUsername
+        DBPassword: !Ref DBPassword
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-database-stack'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  BackendStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: DatabaseStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/03-backend.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        AmiId: !Ref AmiId
+        ECRImageUrl: !Ref ECRImageUrl
+        DBUsername: !Ref DBUsername
+        DBPassword: !Ref DBPassword
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-backend-stack'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  FrontendStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: BackendStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/04-frontend.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-frontend-stack'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  CICDStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: BackendStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/05-cicd.yml'
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        GitHubRepo: !Ref GitHubRepo
+        GitHubBranch: !Ref GitHubBranch
+        GitHubToken: !Ref GitHubToken
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-cicd-stack'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  CloudFrontDomain:
+    Value: { "Fn::GetAtt": [FrontendStack, Outputs.CloudFrontDomain] }
+  ALBDNSName:
+    Value: { "Fn::GetAtt": [BackendStack, Outputs.ALBDNSName] }
+  PipelineName:
+    Value: { "Fn::GetAtt": [CICDStack, Outputs.PipelineName] }
+  ECRRepositoryURI:
+    Value: { "Fn::GetAtt": [BackendStack, Outputs.ECRRepositoryURI] }

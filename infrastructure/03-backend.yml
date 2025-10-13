@@ -1,0 +1,373 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: LinkBox - Backend (ALB, ASG, EC2, IAM)
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: linkbox
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: Latest Amazon Linux 2 AMI id
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+  MaxCapacity:
+    Type: Number
+    Default: 2
+  MinCapacity:
+    Type: Number
+    Default: 1
+  ECRImageUrl:
+    Type: String
+    Description: ECR image (repository:tag)
+  DBUsername:
+    Type: String
+    NoEcho: true
+  DBPassword:
+    Type: String
+    NoEcho: true
+
+Resources:
+  # S3 Bucket for file uploads
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${EnvironmentName}-uploads'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: ['*']
+            AllowedMethods: [PUT, POST, GET]
+            AllowedHeaders: ['*']
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldUploads
+            Status: Enabled
+            ExpirationInDays: 90
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-uploads'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  BackendECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${EnvironmentName}-backend'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-backend-ecr'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic from ALB
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:VpcId" } }
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: Allow HTTP from ALB
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-backend-sg'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound HTTP
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:VpcId" } }
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTP from internet
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-alb-sg'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Allow backend instances to connect to RDS
+  BackendToDBIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:DBSecurityGroupId" } }
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref BackendSecurityGroup
+      Description: Allow PostgreSQL from backend instances
+
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${EnvironmentName}-alb'
+      Scheme: internet-facing
+      Subnets: !Split [',', { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:PublicSubnets" } }]
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-alb'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:VpcId" } }
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-tg'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub '${UploadsBucket.Arn}'
+                  - !Sub '${UploadsBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt UploadsBucket.Arn
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/linkbox/*'
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # GetAuthorizationToken requires Resource: '*' per AWS
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              # Scope other ECR actions to specific repository
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: !GetAtt BackendECRRepository.Arn
+        - PolicyName: EC2TaggingAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:DescribeInstances
+                Resource: '*'  # Required for instance metadata operations
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${EnvironmentName}/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-instance-role'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: !Ref AmiId
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref BackendSecurityGroup
+        UserData: !Base64 
+          Fn::Sub: |
+            #!/bin/bash
+            yum update -y
+            
+            # Install Docker
+            amazon-linux-extras install docker -y || yum install -y docker
+            systemctl enable docker
+            systemctl start docker
+            
+            # Install CodeDeploy agent
+            yum install -y ruby wget
+            cd /home/ec2-user
+            wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
+            chmod +x ./install
+            ./install auto
+            service codedeploy-agent start
+            chkconfig codedeploy-agent on
+            
+            # Install jq for JSON parsing
+            yum install -y jq
+            
+            # Create application directory
+            mkdir -p /opt/linkbox-backend
+            chown ec2-user:ec2-user /opt/linkbox-backend
+            
+            # Export environment variables for deployment scripts
+            echo "export S3_BUCKET_NAME=${EnvironmentName}-uploads" >> /etc/environment
+            echo "export DATABASE_URL=postgresql://${DBUsername}:${DBPassword}@$(aws ssm get-parameter --name /${EnvironmentName}/db-endpoint --with-decryption --query Parameter.Value --output text):5432/linkbox" >> /etc/environment
+            
+            # Tag instance for CodeDeploy
+            INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+            aws ec2 create-tags --region ${AWS::Region} --resources $INSTANCE_ID --tags Key=Environment,Value=${EnvironmentName} Key=Application,Value=backend
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Split [',', { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:PrivateSubnets" } }]
+      DesiredCapacity: !Ref DesiredCapacity
+      MaxSize: !Ref MaxCapacity
+      MinSize: !Ref MinCapacity
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-backend-instance'
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: LinkBox
+          PropagateAtLaunch: true
+        - Key: Environment
+          Value: !Ref EnvironmentName
+          PropagateAtLaunch: true
+        - Key: Application
+          Value: backend
+          PropagateAtLaunch: true
+
+Outputs:
+  ALBDNSName:
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub '${EnvironmentName}:ALBDNS'
+  BackendSecurityGroupId:
+    Value: !Ref BackendSecurityGroup
+    Export:
+      Name: !Sub '${EnvironmentName}:BackendSG'
+  ECRRepositoryURI:
+    Value: !GetAtt BackendECRRepository.RepositoryUri
+    Export:
+      Name: !Sub '${EnvironmentName}:ECRRepositoryURI'
+  AutoScalingGroupName:
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: !Sub '${EnvironmentName}:AutoScalingGroupName'
+  UploadsBucketName:
+    Value: !Ref UploadsBucket
+    Export:
+      Name: !Sub '${EnvironmentName}:UploadsBucket'

@@ -1,0 +1,38 @@
+@startuml LinkBox
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam rectangle {
+  Rounded true
+}
+
+actor User as U
+
+rectangle "CloudFront Distribution" as CF {
+  rectangle "Edge Cache" as EDGE
+}
+
+rectangle "S3 Static Bucket\n(index.html, JS, CSS)" as S3FE
+cloud "S3 Uploads Bucket" as S3UP
+
+node VPC {
+  frame "Public Subnets" {
+    rectangle "Application Load Balancer" as ALB
+  }
+  frame "Private Subnets" {
+    node "Auto Scaling Group" as ASG {
+      rectangle "EC2 (FastAPI Container)" as API
+    }
+    database "RDS PostgreSQL" as RDS
+  }
+}
+
+U --> CF : HTTPS
+CF --> S3FE : GET /
+CF --> ALB : /api/*
+ALB --> API : HTTP
+API --> S3UP : Generate presigned POST
+U --> S3UP : Direct file upload (presigned)
+API --> RDS : Metadata (INSERT/SELECT)
+CF --> ALB : /files/{id} (optional metadata fetch)
+
+@enduml
