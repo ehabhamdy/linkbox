@@ -65,11 +65,15 @@ graph TB
         DBParam[SSM Parameter<br/>/linkbox/db-endpoint]
     end
 
-    subgraph CICD["CI/CD Pipeline"]
-        CodePipeline[CodePipeline<br/>3 Stages]
+    subgraph CICD["CI/CD Pipeline - Backend Only"]
+        CodePipeline[CodePipeline<br/>3 Stages<br/>Backend Only]
         CodeBuild[CodeBuild<br/>Docker Build]
         CodeDeploy[CodeDeploy<br/>EC2 Deployment]
         GitHubWebhook[GitHub Webhook]
+    end
+    
+    subgraph ManualDeploy["Manual Deployment"]
+        DevMachine[Developer Machine<br/>deploy-frontend.sh]
     end
 
     subgraph IAM["IAM Roles & Policies"]
@@ -88,6 +92,10 @@ graph TB
     CF -->|Static Assets| OAI
     OAI -->|S3 GetObject| FrontendBucket
     CF -->|/api/* requests| ALB1
+    
+    %% Frontend Manual Deployment
+    DevMachine -->|npm build + aws s3 sync| FrontendBucket
+    DevMachine -.->|CloudFront invalidation| CF
     
     %% Internet Gateway
     IGW <--> PubRT
@@ -159,6 +167,7 @@ graph TB
     style ECR fill:#fd79a8
     style CICD fill:#55efc4
     style SSM fill:#fab1a0
+    style ManualDeploy fill:#dfe6e9
 ```
 
 ---
@@ -503,7 +512,39 @@ main.yml (Master Stack)
 
 ## 🔄 Traffic Flows
 
-### 1. End-User Web Request Flow
+### 1. Frontend Deployment Flow (Manual)
+```
+Developer Machine:
+1. cd infrastructure
+2. ./deploy-frontend.sh linkbox-master
+   
+Script executes:
+3. Retrieves S3 bucket name and CloudFront domain from CloudFormation
+4. cd ../frontend && npm install
+5. npm run build (creates dist/ directory)
+6. aws s3 sync dist/ s3://<bucket>/ --delete
+   └→ Uploads HTML, CSS, JS, assets
+   └→ Sets cache headers (immutable for assets, no-cache for index.html)
+7. aws cloudfront create-invalidation --paths "/*"
+   └→ Clears CloudFront edge cache (5-15 minutes)
+8. Display application URL
+
+Frontend is now live at: https://<cloudfront-domain>
+```
+
+**When to Deploy Frontend:**
+- After infrastructure deployment (first time)
+- After any frontend code changes
+- After updating API endpoint configuration
+
+**Automation Note:** 
+- ⚠️ Frontend deployment is MANUAL (no CodePipeline)
+- ✅ Backend deployment is AUTOMATED (via CodePipeline on git push)
+- 💡 For full automation, you could add a frontend CI/CD pipeline
+
+---
+
+### 2. End-User Web Request Flow
 ```
 1. User → https://<cloudfront-domain>
 2. CloudFront CDN (SSL/TLS termination)
@@ -517,7 +558,7 @@ main.yml (Master Stack)
       └→ Backend App (Docker) → RDS PostgreSQL → Response
 ```
 
-### 2. File Upload Flow
+### 3. File Upload Flow
 ```
 1. Frontend requests presigned POST URL from backend
 2. Backend generates presigned URL using IAM role
@@ -526,7 +567,7 @@ main.yml (Master Stack)
 5. Download URL provided (via CloudFront or S3)
 ```
 
-### 3. CI/CD Deployment Flow
+### 4. Backend CI/CD Deployment Flow (Automated)
 ```
 1. Developer pushes to GitHub (main branch)
 2. GitHub Webhook triggers CodePipeline
@@ -547,7 +588,7 @@ main.yml (Master Stack)
 7. Traffic flows to updated instances
 ```
 
-### 4. Backend Instance Initialization Flow
+### 5. Backend Instance Initialization Flow
 ```
 1. ASG launches EC2 instance in private subnet
 2. UserData script executes:
@@ -562,7 +603,7 @@ main.yml (Master Stack)
 5. ALB routes traffic to instance
 ```
 
-### 5. Database Connection Flow
+### 6. Database Connection Flow
 ```
 1. Backend instance reads /linkbox/db-endpoint from SSM
 2. Constructs DATABASE_URL with credentials
@@ -571,7 +612,7 @@ main.yml (Master Stack)
 5. Connection established over private network
 ```
 
-### 6. Outbound Internet Access Flow
+### 7. Outbound Internet Access Flow
 ```
 1. EC2 instance in private subnet needs internet (yum update, ECR pull)
 2. Traffic routes to Private Route Table

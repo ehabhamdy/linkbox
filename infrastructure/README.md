@@ -12,8 +12,15 @@ main.yml (Master Stack)
 ├── 02-database.yml     → RDS PostgreSQL, Security Groups
 ├── 03-backend.yml      → ALB, ASG, EC2, ECR, S3 Uploads
 ├── 04-frontend.yml     → S3 Static Hosting, CloudFront CDN
-└── 05-cicd.yml         → CodePipeline, CodeBuild, CodeDeploy
+└── 05-cicd.yml         → CodePipeline, CodeBuild, CodeDeploy (Backend only)
+
+Deployment Scripts:
+├── deploy.sh           → Deploy infrastructure (all stacks)
+├── deploy-frontend.sh  → Deploy frontend to S3/CloudFront (manual)
+└── get-ami-id.sh       → Get latest Amazon Linux 2 AMI
 ```
+
+**Note:** Backend has automated CI/CD via CodePipeline. Frontend requires manual deployment using `deploy-frontend.sh`.
 
 ## 🚀 Quick Start
 
@@ -209,6 +216,28 @@ docker push $ECR_URI:latest
 
 ### 2. Deploy Frontend
 
+**Option A: Using Deployment Script (Recommended)**
+
+```bash
+cd infrastructure
+
+# Deploy with default stack name (linkbox-master)
+./deploy-frontend.sh
+
+# Or specify custom stack name
+./deploy-frontend.sh my-stack-name
+```
+
+The script will:
+- ✅ Retrieve S3 bucket and CloudFront info from stack
+- ✅ Install dependencies (npm install)
+- ✅ Build frontend (npm run build)
+- ✅ Deploy to S3 with optimal cache headers
+- ✅ Invalidate CloudFront cache
+- ✅ Display the application URL
+
+**Option B: Manual Deployment**
+
 ```bash
 # Get CloudFront bucket name from stack outputs
 FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
@@ -225,17 +254,37 @@ npm run build
 aws s3 sync dist/ s3://$FRONTEND_BUCKET/ --delete
 
 # Invalidate CloudFront cache
-DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
   --stack-name linkbox-master \
-  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomain`].OutputValue' \
+  --output text)
+
+CLOUDFRONT_ID=$(aws cloudfront list-distributions \
+  --query "DistributionList.Items[?DomainName=='$CLOUDFRONT_DOMAIN'].Id" \
   --output text)
 
 aws cloudfront create-invalidation \
-  --distribution-id $DISTRIBUTION_ID \
+  --distribution-id $CLOUDFRONT_ID \
   --paths "/*"
 ```
 
-### 3. Access Your Application
+### 3. Update Frontend Configuration
+
+Before deploying the frontend, update the API endpoint in your frontend code:
+
+```bash
+# Get the CloudFront domain
+CLOUDFRONT_DOMAIN=$(aws cloudformation describe-stacks \
+  --stack-name linkbox-master \
+  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomain`].OutputValue' \
+  --output text)
+
+echo "API Endpoint: https://$CLOUDFRONT_DOMAIN/api"
+```
+
+Update your frontend configuration file (e.g., `frontend/.env` or `frontend/src/config.ts`) with this API URL.
+
+### 4. Access Your Application
 
 ```bash
 # Get application URLs
