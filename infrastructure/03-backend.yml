@@ -316,9 +316,9 @@ Resources:
             mkdir -p /opt/linkbox-backend
             chown ec2-user:ec2-user /opt/linkbox-backend
             
-            # Export environment variables for deployment scripts
-            echo "export S3_BUCKET_NAME=${EnvironmentName}-uploads" >> /etc/environment
-            echo "export DATABASE_URL=postgresql://${DBUsername}:${DBPassword}@$(aws ssm get-parameter --name /${EnvironmentName}/db-endpoint --with-decryption --query Parameter.Value --output text):5432/linkbox" >> /etc/environment
+            # Set environment name for deployment scripts
+            echo "ENVIRONMENT_NAME=${EnvironmentName}" > /opt/linkbox-backend/.env
+            chown ec2-user:ec2-user /opt/linkbox-backend/.env
             
             # Tag instance for CodeDeploy
             INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)

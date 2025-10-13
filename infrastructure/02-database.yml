@@ -65,7 +65,7 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  # SSM Parameter for DB Endpoint (used by EC2 instances)
+  # SSM Parameters for DB Configuration (used by EC2 instances)
   DBEndpointParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -73,6 +73,39 @@ Resources:
       Type: String
       Value: !GetAtt PostgresDB.Endpoint.Address
       Description: RDS PostgreSQL endpoint address
+      Tags:
+        Project: LinkBox
+        Environment: !Ref EnvironmentName
+
+  DBNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${EnvironmentName}/db-name'
+      Type: String
+      Value: linkbox
+      Description: RDS PostgreSQL database name
+      Tags:
+        Project: LinkBox
+        Environment: !Ref EnvironmentName
+
+  DBUsernameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${EnvironmentName}/db-username'
+      Type: String
+      Value: !Ref DBUsername
+      Description: RDS PostgreSQL master username
+      Tags:
+        Project: LinkBox
+        Environment: !Ref EnvironmentName
+
+  DBPasswordParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${EnvironmentName}/db-password'
+      Type: SecureString
+      Value: !Ref DBPassword
+      Description: RDS PostgreSQL master password (encrypted)
       Tags:
         Project: LinkBox
         Environment: !Ref EnvironmentName
