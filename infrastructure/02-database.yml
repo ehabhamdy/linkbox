@@ -57,6 +57,7 @@ Resources:
       BackupRetentionPeriod: 7
       StorageEncrypted: true
       AutoMinorVersionUpgrade: true
+      EnableIAMDatabaseAuthentication: true  # ← Enable IAM authentication
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-postgres'
