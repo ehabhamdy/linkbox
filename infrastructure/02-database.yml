@@ -104,9 +104,9 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub '/${EnvironmentName}/db-password'
-      Type: SecureString
+      Type: String  # Changed from SecureString - CloudFormation limitation
       Value: !Ref DBPassword
-      Description: RDS PostgreSQL master password (encrypted)
+      Description: RDS PostgreSQL master password
       Tags:
         Project: LinkBox
         Environment: !Ref EnvironmentName
