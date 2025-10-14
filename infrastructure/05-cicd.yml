@@ -117,6 +117,10 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: cicd/buildspec-backend.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub '/aws/codebuild/${EnvironmentName}-backend-build'
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-codebuild'
@@ -154,7 +158,15 @@ Resources:
                 Action:
                   - ec2:CreateTags
                   - ec2:DescribeInstances
-                  - autoscaling:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - autoscaling:CompleteLifecycleAction
+                  - autoscaling:DeleteLifecycleHook
+                  - autoscaling:DescribeAutoScalingGroups
+                  - autoscaling:DescribeLifecycleHooks
+                  - autoscaling:PutLifecycleHook
+                  - autoscaling:RecordLifecycleActionHeartbeat
                 Resource: '*'
         - PolicyName: S3ArtifactsAccess
           PolicyDocument:
@@ -185,7 +197,7 @@ Resources:
       ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
       AutoScalingGroups:
         - { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:AutoScalingGroupName" } }
-      DeploymentConfigName: CodeDeployDefault.AllAtOneTime
+      DeploymentConfigName: CodeDeployDefault.AllAtOnce
 
   # CodePipeline Service Role
   CodePipelineServiceRole:
@@ -237,6 +249,13 @@ Resources:
       ArtifactStore:
         Type: S3
         Location: !Ref PipelineArtifactsBucket
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-pipeline'
+        - Key: Project
+          Value: LinkBox
+        - Key: Environment
+          Value: !Ref EnvironmentName
       Stages:
         - Name: Source
           Actions:

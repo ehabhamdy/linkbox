@@ -1,17 +1,15 @@
 version: 0.2
 
-env:
-  variables:
-    IMAGE_REPO_NAME: linkbox-backend
-    AWS_DEFAULT_REGION: us-east-1
-
 phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws --version
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query account --output text)
-      - REPOSITORY_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      - echo "AWS Account ID: $AWS_ACCOUNT_ID"
+      - echo "AWS Region: $AWS_DEFAULT_REGION"
+      - echo "Image Repo Name: $IMAGE_REPO_NAME"
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      - echo "Repository URI: $REPOSITORY_URI"
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
       - GIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${GIT_HASH:-latest}

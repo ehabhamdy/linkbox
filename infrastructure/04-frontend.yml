@@ -38,20 +38,17 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: AllowCloudFront
+          - Sid: AllowCloudFrontOAI
             Effect: Allow
             Principal:
-              Service: cloudfront.amazonaws.com
+              CanonicalUser: !GetAtt OAI.S3CanonicalUserId
             Action: s3:GetObject
             Resource: !Sub '${FrontendBucket.Arn}/*'
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
 
   # Note: OAI is being deprecated in favor of OAC (OriginAccessControl)
   # Using OAI here for learning simplicity; for production use OAC
   OAI:
-    Type: AWS::CloudFront::OriginAccessIdentity
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: !Sub '${EnvironmentName} access identity'
@@ -86,13 +83,13 @@ Resources:
         # Note: ForwardedValues is legacy; modern approach uses cache policies
         # Using ForwardedValues here for learning simplicity
         DefaultCacheBehavior:
-            TargetOriginId: S3Origin
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD]
-            CachedMethods: [GET, HEAD]
-            ForwardedValues:
-              QueryString: false
-            Compress: true
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          ForwardedValues:
+            QueryString: false
+          Compress: true
         CacheBehaviors:
           - PathPattern: 'api/*'
             TargetOriginId: BackendALB
