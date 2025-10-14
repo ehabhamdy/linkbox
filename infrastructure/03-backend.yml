@@ -66,8 +66,11 @@ Resources:
 
   BackendECRRepository:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Retain
     Properties:
       RepositoryName: !Sub '${EnvironmentName}-backend'
+      EmptyOnDelete: true
       ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:

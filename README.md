@@ -834,6 +834,14 @@ aws s3 rm s3://linkbox-uploads --recursive
 aws s3 rm s3://<frontend-bucket-name> --recursive  
 aws s3 rm s3://linkbox-pipeline-artifacts-<account-id> --recursive
 
+# Delete all images
+aws ecr batch-delete-image \
+  --repository-name linkbox-backend \
+  --image-ids "$(aws ecr list-images \
+    --repository-name linkbox-backend \
+    --query 'imageIds[*]' \
+    --output json)"
+
 # 2. Delete main stack (cascades to nested stacks)
 aws cloudformation delete-stack --stack-name linkbox-master
 
