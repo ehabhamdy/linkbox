@@ -489,6 +489,225 @@ Add to GitHub: Settings → Webhooks → Add webhook
 - Secret: Your GitHub token
 - Events: Just the push event
 
+### GitHub V2 with CodeStar Connections
+
+**Recommended for Production:** GitHub V2 with CodeStar Connections is more secure and provides better integration than V1 OAuth tokens.
+
+#### Benefits of GitHub V2
+
+- ✅ **No Personal Access Tokens** - More secure credential management
+- ✅ **Fine-grained Permissions** - Better access control
+- ✅ **OAuth App Integration** - Native GitHub authentication
+- ✅ **Automatic Token Rotation** - AWS manages credentials
+- ✅ **Better Auditing** - CloudTrail logs connection usage
+
+#### Prerequisites
+
+- GitHub repository
+- AWS Console access
+- Admin permissions in your GitHub account/organization
+
+#### Step 1: Create CodeStar Connection
+
+**Via AWS Console:**
+
+1. Navigate to AWS CodePipeline Console
+2. Go to **Settings** → **Connections**
+3. Click **Create connection**
+4. Select **GitHub** as the provider
+5. Enter a connection name (e.g., `linkbox-github-connection`)
+6. Click **Connect to GitHub**
+7. Authorize AWS Connector for GitHub (one-time)
+8. Install the AWS Connector app on your repository or organization
+9. Copy the **Connection ARN** (e.g., `arn:aws:codestar-connections:us-east-1:123456789012:connection/abc123...`)
+
+**Via AWS CLI:**
+
+```bash
+# Create the connection (this initiates the setup)
+aws codestar-connections create-connection \
+  --provider-type GitHub \
+  --connection-name linkbox-github-connection
+
+# Note: You still need to complete the handshake via the AWS Console
+# The connection will be in PENDING state until completed
+```
+
+#### Step 2: Complete the GitHub Authorization
+
+1. In the AWS Console, find your connection (Status: **PENDING**)
+2. Click **Update pending connection**
+3. Click **Install a new app** or select an existing installation
+4. Authorize the AWS Connector for GitHub app
+5. Grant access to your repository
+6. Connection status should change to **Available**
+
+#### Step 3: Modify CloudFormation Template
+
+Update `infrastructure/05-cicd.yml` to use GitHub V2:
+
+**Add new parameter:**
+
+```yaml
+Parameters:
+  # ... existing parameters ...
+  
+  # Replace GitHubToken with CodeStarConnectionArn
+  CodeStarConnectionArn:
+    Type: String
+    Description: ARN of the CodeStar Connection for GitHub (e.g., arn:aws:codestar-connections:region:account:connection/id)
+```
+
+**Update CodePipeline IAM Role:**
+
+Add CodeStar Connections permissions:
+
+```yaml
+CodePipelineServiceRole:
+  Type: AWS::IAM::Role
+  Properties:
+    # ... existing properties ...
+    Policies:
+      - PolicyName: CodePipelinePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            # ... existing statements ...
+            
+            # Add this new statement for CodeStar Connections
+            - Effect: Allow
+              Action:
+                - codestar-connections:UseConnection
+              Resource: !Ref CodeStarConnectionArn
+```
+
+**Update Pipeline Source Stage:**
+
+Replace GitHub V1 with V2:
+
+```yaml
+Stages:
+  - Name: Source
+    Actions:
+      - Name: SourceAction
+        ActionTypeId:
+          Category: Source
+          Owner: AWS          # Changed from ThirdParty
+          Provider: CodeStarSourceConnection  # Changed from GitHub
+          Version: '1'
+        Configuration:
+          ConnectionArn: !Ref CodeStarConnectionArn
+          FullRepositoryId: !Ref GitHubRepo  # Format: owner/repo
+          BranchName: !Ref GitHubBranch
+          OutputArtifactFormat: CODE_ZIP  # or CODEBUILD_CLONE_REF
+        OutputArtifacts:
+          - Name: SourceOutput
+```
+
+**Remove GitHub Webhook:**
+
+Delete the `GitHubWebhook` resource (not needed with V2):
+
+```yaml
+# Remove this entire resource
+# GitHubWebhook:
+#   Type: AWS::CodePipeline::Webhook
+#   ...
+```
+
+#### Step 4: Deploy with CodeStar Connection
+
+**Update your deployment script:**
+
+```bash
+cd infrastructure
+
+# Deploy with CodeStar Connection ARN instead of GitHub token
+./deploy.sh \
+  linkbox-cfn-templates \
+  linkbox-master \
+  ami-091d7d61336a4c68f \
+  your-username/repo-name \
+  arn:aws:codestar-connections:us-east-1:123456789012:connection/abc123...
+```
+
+**Or update existing stack:**
+
+```bash
+aws cloudformation update-stack \
+  --stack-name linkbox-master \
+  --template-url https://s3.amazonaws.com/linkbox-cfn-templates/main.yml \
+  --parameters \
+    ParameterKey=CodeStarConnectionArn,ParameterValue=arn:aws:codestar-connections:... \
+  --capabilities CAPABILITY_IAM
+```
+
+#### Step 5: Verify the Setup
+
+```bash
+# Check connection status
+aws codestar-connections get-connection \
+  --connection-arn arn:aws:codestar-connections:us-east-1:123456789012:connection/abc123...
+
+# Expected output:
+# {
+#   "Connection": {
+#     "ConnectionName": "linkbox-github-connection",
+#     "ConnectionArn": "arn:...",
+#     "ProviderType": "GitHub",
+#     "ConnectionStatus": "AVAILABLE"
+#   }
+# }
+
+# Test pipeline trigger
+git add .
+git commit -m "Test GitHub V2 trigger"
+git push origin main
+
+# Watch pipeline execution
+aws codepipeline get-pipeline-state --name linkbox-backend-pipeline
+```
+
+#### Troubleshooting
+
+**Connection shows PENDING:**
+- Complete the GitHub OAuth flow in AWS Console
+- Install AWS Connector app on your repository
+
+**Pipeline fails with "Access Denied":**
+- Verify CodePipeline role has `codestar-connections:UseConnection` permission
+- Check that Connection ARN is correct in template
+
+**Pipeline not triggering on push:**
+- V2 connections use CloudWatch Events (automatic)
+- No webhook configuration needed
+- Check CloudTrail for connection usage logs
+
+**Repository not accessible:**
+- Ensure AWS Connector app has access to your repository
+- Go to GitHub Settings → Applications → AWS Connector → Configure
+- Grant repository access
+
+#### Migration from V1 to V2
+
+If you're already using GitHub V1:
+
+1. Create CodeStar Connection (keep V1 active)
+2. Update CloudFormation template with both parameters
+3. Deploy stack update
+4. Test pipeline with V2
+5. Remove GitHub token parameter and V1 configuration
+6. Delete GitHub webhook in repository settings (optional)
+
+#### Security Best Practices
+
+- ✅ Use CodeStar Connections (V2) for production
+- ✅ Grant minimum repository access (specific repos, not all)
+- ✅ Regularly audit connection permissions
+- ✅ Use CloudTrail to monitor connection usage
+- ✅ Rotate connections periodically
+- ⚠️ Never commit Connection ARNs in public repositories (use SSM Parameter Store)
+
 ---
 
 ## Configuration
