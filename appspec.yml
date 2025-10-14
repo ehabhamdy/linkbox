@@ -1,9 +1,11 @@
 version: 0.0
 os: linux
 files:
-  - source: /
-    destination: /opt/linkbox-backend
-    overwrite: yes
+  # Copy scripts to the EC2 instance
+  - source: scripts
+    destination: /opt/linkbox-backend/scripts
+  - source: imagedefinitions.json
+    destination: /opt/linkbox-backend/imagedefinitions.json
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies.sh
