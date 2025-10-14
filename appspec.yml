@@ -4,6 +4,7 @@ files:
   # Copy all files from the artifact to the EC2 instance
   - source: /
     destination: /opt/linkbox-backend
+    overwrite: yes
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies.sh
