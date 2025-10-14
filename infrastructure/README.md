@@ -2,6 +2,12 @@
 
 CloudFormation templates for deploying the LinkBox file sharing application on AWS.
 
+> **📘 For complete deployment guide, see:** [Main README](../README.md)
+>
+> This document contains infrastructure-specific technical details and reference information.
+
+---
+
 ## 📁 Architecture
 
 This infrastructure uses **nested CloudFormation stacks** for modularity:
@@ -17,10 +23,14 @@ main.yml (Master Stack)
 Deployment Scripts:
 ├── deploy.sh           → Deploy infrastructure (all stacks)
 ├── deploy-frontend.sh  → Deploy frontend to S3/CloudFront (manual)
+├── quick-update.sh     → Fast stack updates (existing parameters)
+├── update-stack.sh     → Full stack updates (change parameters)
 └── get-ami-id.sh       → Get latest Amazon Linux 2 AMI
 ```
 
 **Note:** Backend has automated CI/CD via CodePipeline. Frontend requires manual deployment using `deploy-frontend.sh`.
+
+---
 
 ## 🚀 Quick Start
 

@@ -2,6 +2,10 @@
 
 Complete guide for running the LinkBox backend locally with PostgreSQL.
 
+> **📘 For full project documentation, see:** [Main README](../README.md)
+>
+> This guide focuses on backend-specific local development setup.
+
 ---
 
 ## 🚀 Quick Start (Docker Compose)
