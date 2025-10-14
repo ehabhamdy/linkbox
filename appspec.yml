@@ -1,11 +1,9 @@
 version: 0.0
 os: linux
 files:
-  # Copy scripts to the EC2 instance
-  - source: scripts
-    destination: /opt/linkbox-backend/scripts
-  - source: imagedefinitions.json
-    destination: /opt/linkbox-backend/imagedefinitions.json
+  # Copy all files from the artifact to the EC2 instance
+  - source: /
+    destination: /opt/linkbox-backend
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies.sh
