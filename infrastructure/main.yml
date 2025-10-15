@@ -120,11 +120,18 @@ Resources:
           Value: !Ref EnvironmentName
 
 Outputs:
+  FrontendBucketName:
+    Value: { "Fn::GetAtt": [FrontendStack, Outputs.FrontendBucketName] }
+    Description: S3 bucket name for frontend static files
   CloudFrontDomain:
     Value: { "Fn::GetAtt": [FrontendStack, Outputs.CloudFrontDomain] }
+    Description: CloudFront distribution domain name
   ALBDNSName:
     Value: { "Fn::GetAtt": [BackendStack, Outputs.ALBDNSName] }
+    Description: Application Load Balancer DNS name
   PipelineName:
     Value: { "Fn::GetAtt": [CICDStack, Outputs.PipelineName] }
+    Description: CodePipeline name
   ECRRepositoryURI:
     Value: { "Fn::GetAtt": [BackendStack, Outputs.ECRRepositoryURI] }
+    Description: ECR repository URI for backend Docker images
