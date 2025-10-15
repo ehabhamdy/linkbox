@@ -46,10 +46,14 @@ async def generate_presigned_url(req: PresignRequest):
 
     conditions = [
         {"Content-Type": req.content_type},
+        {"acl": "public-read"},
         ["content-length-range", 0, settings.max_upload_bytes]
     ]
 
-    fields = {"Content-Type": req.content_type}
+    fields = {
+        "Content-Type": req.content_type,
+        "acl": "public-read"
+    }
 
     try:
         presigned = s3_client.generate_presigned_post(
