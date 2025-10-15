@@ -91,7 +91,7 @@ Resources:
             QueryString: false
           Compress: true
         CacheBehaviors:
-          - PathPattern: 'api/*'
+          - PathPattern: '/api/*'
             TargetOriginId: BackendALB
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
