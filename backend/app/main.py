@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import boto3
 from botocore.exceptions import ClientError
@@ -16,6 +16,7 @@ settings = get_settings()
 s3_client = boto3.client('s3', region_name=settings.aws_region)
 
 app = FastAPI(title="LinkBox API", version="0.1.0")
+api_router = APIRouter(prefix="/api")
 
 # Allow simple CORS (CloudFront + local dev)
 app.add_middleware(
@@ -34,11 +35,11 @@ def startup():
     if 'files' not in inspector.get_table_names():
         models.Base.metadata.create_all(bind=_engine)
 
-@app.get("/health")
+@api_router.get("/health")
 async def health():
     return {"status": "ok"}
 
-@app.post("/generate-presigned-url", response_model=PresignResponse)
+@api_router.post("/generate-presigned-url", response_model=PresignResponse)
 async def generate_presigned_url(req: PresignRequest):
     file_id = generate_short_id(6)
     s3_key = f"uploads/{file_id}-{req.filename}"
@@ -86,7 +87,7 @@ async def generate_presigned_url(req: PresignRequest):
         download_url=download_url,
     )
 
-@app.get("/files/{file_id}", response_model=FileRecord)
+@api_router.get("/files/{file_id}", response_model=FileRecord)
 async def get_file_metadata(file_id: str):
     from sqlalchemy import select
     from .db import SessionLocal
@@ -95,3 +96,6 @@ async def get_file_metadata(file_id: str):
         if not result:
             raise HTTPException(status_code=404, detail="Not found")
         return result
+
+# Include the API router
+app.include_router(api_router)
