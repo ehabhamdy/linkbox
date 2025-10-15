@@ -6,12 +6,14 @@ export const UploadForm: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [sharedLink, setSharedLink] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [copied, setCopied] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
       setSharedLink('');
       setError('');
+      setCopied(false);
     }
   };
 
@@ -54,18 +56,90 @@ export const UploadForm: React.FC = () => {
     }
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(sharedLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   return (
-    <section style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: 4 }}>
-      <input type="file" onChange={handleFileChange} />
-      <button onClick={handleUpload} disabled={!selectedFile || uploading} style={{ marginLeft: '0.5rem' }}>
-        {uploading ? 'Uploading...' : 'Upload'}
-      </button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {sharedLink && (
-        <p>
-          Link: <a href={sharedLink} target="_blank" rel="noopener noreferrer">{sharedLink}</a>
-        </p>
-      )}
-    </section>
+    <div className="upload-container">
+      <div className="upload-card">
+        <div className="file-input-wrapper">
+          <input
+            type="file"
+            id="file-upload"
+            onChange={handleFileChange}
+            className="file-input"
+          />
+          <label htmlFor="file-upload" className="file-input-label">
+            <span className="upload-icon">📁</span>
+            <span className="upload-text">
+              {selectedFile ? selectedFile.name : 'Choose a file'}
+            </span>
+            {selectedFile && (
+              <span className="file-size">{formatFileSize(selectedFile.size)}</span>
+            )}
+          </label>
+        </div>
+
+        <button
+          onClick={handleUpload}
+          disabled={!selectedFile || uploading}
+          className={`upload-button ${uploading ? 'uploading' : ''}`}
+        >
+          {uploading ? (
+            <>
+              <span className="spinner"></span>
+              Uploading...
+            </>
+          ) : (
+            <>
+              <span>⬆️</span>
+              Upload File
+            </>
+          )}
+        </button>
+
+        {error && (
+          <div className="message error-message">
+            <span>❌</span>
+            {error}
+          </div>
+        )}
+
+        {sharedLink && (
+          <div className="success-container">
+            <div className="message success-message">
+              <span>✅</span>
+              File uploaded successfully!
+            </div>
+            <div className="link-container">
+              <div className="link-header">
+                <span>🔗 Share this link (expires in 5 minutes):</span>
+              </div>
+              <div className="link-box">
+                <input
+                  type="text"
+                  value={sharedLink}
+                  readOnly
+                  className="link-input"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <button onClick={copyToClipboard} className="copy-button">
+                  {copied ? '✓ Copied!' : '📋 Copy'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
