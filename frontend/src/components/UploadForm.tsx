@@ -28,7 +28,14 @@ export const UploadForm: React.FC = () => {
         size_bytes: selectedFile.size,
       });
 
+      console.log('Backend response:', presignResp.data);
+
       const { upload_url, form_fields, download_url } = presignResp.data;
+
+      if (!form_fields) {
+        console.error('Missing form_fields in response:', presignResp.data);
+        throw new Error('Invalid response from server: missing form_fields');
+      }
 
       const formData = new FormData();
       Object.entries(form_fields).forEach(([k, v]) => formData.append(k, v as string));
@@ -40,8 +47,8 @@ export const UploadForm: React.FC = () => {
 
       setSharedLink(download_url);
     } catch (err: any) {
-      console.error(err);
-      setError('Upload failed');
+      console.error('Upload error:', err);
+      setError(err.message || 'Upload failed');
     } finally {
       setUploading(false);
     }

@@ -12,6 +12,10 @@ class PresignResponse(BaseModel):
     form_fields: dict
     file_id: str
     download_url: str
+    
+    model_config = {
+        "populate_by_name": True,
+    }
 
 class FileRecord(BaseModel):
     id: str
