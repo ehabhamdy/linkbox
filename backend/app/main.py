@@ -46,13 +46,11 @@ async def generate_presigned_url(req: PresignRequest):
 
     conditions = [
         {"Content-Type": req.content_type},
-        {"acl": "public-read"},
         ["content-length-range", 0, settings.max_upload_bytes]
     ]
 
     fields = {
-        "Content-Type": req.content_type,
-        "acl": "public-read"
+        "Content-Type": req.content_type
     }
 
     try:
@@ -77,12 +75,19 @@ async def generate_presigned_url(req: PresignRequest):
         )
         session.add(record)
 
-    # Build download URL (CloudFront if given else S3 object URL)
-    if settings.cloudfront_download_domain:
-        download_url = f"https://{settings.cloudfront_download_domain}/files/{file_id}"
-    else:
-        # direct S3 path (not presigned) - requires public-read bucket or later signed
-        download_url = f"https://{settings.s3_bucket_name}.s3.{settings.aws_region}.amazonaws.com/{s3_key}"
+    # Generate presigned download URL (temporary, expires in 5 minutes)
+    try:
+        download_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': settings.s3_bucket_name,
+                'Key': s3_key
+            },
+            ExpiresIn=300  # 5 minutes
+        )
+    except ClientError as e:
+        # Fallback to file ID based URL
+        download_url = f"/api/files/{file_id}/download"
 
     return PresignResponse(
         upload_url=presigned['url'],
@@ -100,6 +105,33 @@ async def get_file_metadata(file_id: str):
         if not result:
             raise HTTPException(status_code=404, detail="Not found")
         return result
+
+@api_router.get("/files/{file_id}/download")
+async def get_download_url(file_id: str):
+    """Generate a fresh presigned download URL for a file"""
+    from sqlalchemy import select
+    from .db import SessionLocal
+    from fastapi.responses import RedirectResponse
+    
+    with SessionLocal() as session:
+        result = session.execute(select(models.FileObject).where(models.FileObject.id == file_id)).scalars().first()
+        if not result:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Generate presigned URL
+        try:
+            download_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.s3_bucket_name,
+                    'Key': result.s3_key
+                },
+                ExpiresIn=3600  # 1 hour for on-demand downloads
+            )
+            # Redirect to the presigned URL
+            return RedirectResponse(url=download_url)
+        except ClientError as e:
+            raise HTTPException(status_code=500, detail="Failed to generate download URL") from e
 
 # Include the API router
 app.include_router(api_router)

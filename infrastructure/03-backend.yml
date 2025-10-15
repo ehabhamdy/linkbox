@@ -41,13 +41,10 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false         # Allow public-read ACL on objects
-        BlockPublicPolicy: true        # But block public bucket policies
-        IgnorePublicAcls: false        # Don't ignore the ACLs we set
-        RestrictPublicBuckets: true    # Restrict bucket-level public access
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: ObjectWriter  # Allow setting ACLs on objects
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins: ['*']
