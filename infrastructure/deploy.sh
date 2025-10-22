@@ -171,23 +171,101 @@ print_info "Retrieving stack outputs..."
 OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].Outputs' --output json)
 
 echo ""
-print_info "Deployment complete! Stack outputs:"
+print_info "Infrastructure deployment complete! Stack outputs:"
 echo "$OUTPUTS" | jq -r '.[] | "  \(.OutputKey): \(.OutputValue)"'
 
+# Extract key outputs
+PIPELINE_NAME=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="PipelineName") | .OutputValue')
+ALB_DNS=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ALBDNSName") | .OutputValue')
+
 echo ""
-print_info "Next steps:"
-echo "  1. Build and push your Docker image to ECR"
-echo "  2. Deploy your frontend to S3/CloudFront"
-echo "  3. Trigger the CI/CD pipeline by pushing to GitHub"
-echo ""
-print_info "Useful commands:"
-ECR_URI=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ECRRepositoryURI") | .OutputValue')
-if [ ! -z "$ECR_URI" ]; then
-    echo "  # Login to ECR:"
-    echo "  aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin $ECR_URI"
-    echo ""
-    echo "  # Build and push backend image:"
-    echo "  docker build -t $ECR_URI:latest ./backend"
-    echo "  docker push $ECR_URI:latest"
+print_info "Monitoring CI/CD Pipeline..."
+print_warning "The pipeline will automatically build and deploy the backend Docker image."
+
+if [ -z "$PIPELINE_NAME" ]; then
+    print_error "Could not retrieve pipeline name from stack outputs"
+    exit 1
 fi
 
+# Wait a few seconds for the pipeline to be ready
+sleep 5
+
+# Get the latest pipeline execution
+print_info "Fetching pipeline execution status..."
+EXECUTION_ID=$(aws codepipeline get-pipeline-state --name "$PIPELINE_NAME" --query 'stageStates[0].latestExecution.pipelineExecutionId' --output text 2>/dev/null || echo "")
+
+if [ -z "$EXECUTION_ID" ] || [ "$EXECUTION_ID" == "None" ]; then
+    print_warning "No pipeline execution found yet. The pipeline may start shortly."
+    print_info "Waiting for pipeline to start..."
+    
+    # Wait up to 5 minutes for pipeline to start
+    for i in {1..30}; do
+        sleep 10
+        EXECUTION_ID=$(aws codepipeline get-pipeline-state --name "$PIPELINE_NAME" --query 'stageStates[0].latestExecution.pipelineExecutionId' --output text 2>/dev/null || echo "")
+        if [ ! -z "$EXECUTION_ID" ] && [ "$EXECUTION_ID" != "None" ]; then
+            print_info "Pipeline execution started: $EXECUTION_ID"
+            break
+        fi
+        echo -n "."
+    done
+    echo ""
+fi
+
+if [ -z "$EXECUTION_ID" ] || [ "$EXECUTION_ID" == "None" ]; then
+    print_warning "Pipeline has not started automatically."
+    print_info "You may need to trigger it manually by pushing a commit to GitHub."
+else
+    print_info "Monitoring pipeline execution: $EXECUTION_ID"
+    print_warning "This may take 10-15 minutes..."
+    
+    # Monitor pipeline execution
+    while true; do
+        PIPELINE_STATE=$(aws codepipeline get-pipeline-state --name "$PIPELINE_NAME")
+        
+        # Get overall pipeline status
+        PIPELINE_STATUS=$(echo "$PIPELINE_STATE" | jq -r '.stageStates[0].latestExecution.status' 2>/dev/null || echo "Unknown")
+        
+        # Get status of each stage
+        SOURCE_STATUS=$(echo "$PIPELINE_STATE" | jq -r '.stageStates[] | select(.stageName=="Source") | .latestExecution.status' 2>/dev/null)
+        BUILD_STATUS=$(echo "$PIPELINE_STATE" | jq -r '.stageStates[] | select(.stageName=="Build") | .latestExecution.status' 2>/dev/null)
+        DEPLOY_STATUS=$(echo "$PIPELINE_STATE" | jq -r '.stageStates[] | select(.stageName=="Deploy") | .latestExecution.status' 2>/dev/null)
+        
+        echo "  Source: $SOURCE_STATUS | Build: $BUILD_STATUS | Deploy: $DEPLOY_STATUS"
+        
+        # Check if pipeline is complete
+        if [ "$DEPLOY_STATUS" == "Succeeded" ]; then
+            print_info "Pipeline execution completed successfully!"
+            break
+        elif [ "$DEPLOY_STATUS" == "Failed" ] || [ "$BUILD_STATUS" == "Failed" ] || [ "$SOURCE_STATUS" == "Failed" ]; then
+            print_error "Pipeline execution failed!"
+            print_info "Check the AWS CodePipeline console for details:"
+            echo "  https://console.aws.amazon.com/codesuite/codepipeline/pipelines/$PIPELINE_NAME/view"
+            exit 1
+        fi
+        
+        sleep 30
+    done
+fi
+
+echo ""
+print_info "==================================================================="
+print_info "Backend Deployment Complete!"
+print_info "==================================================================="
+echo ""
+print_info "Backend API URL (ALB):"
+echo "  http://$ALB_DNS"
+echo ""
+print_info "Test the API:"
+echo "  curl http://$ALB_DNS/health"
+echo ""
+print_info "Next Steps:"
+echo "  1. Deploy the frontend by running: ./deploy-frontend.sh"
+echo "     (Frontend deployment is still manual)"
+echo ""
+echo "  2. Access the CodePipeline console to view pipeline details:"
+echo "     https://console.aws.amazon.com/codesuite/codepipeline/pipelines/$PIPELINE_NAME/view"
+echo ""
+print_info "Future deployments:"
+echo "  - Backend: Push to GitHub branch '$GITHUB_BRANCH' (automatic via pipeline)"
+echo "  - Frontend: Run ./deploy-frontend.sh (manual)"
+echo ""
