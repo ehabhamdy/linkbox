@@ -10,8 +10,7 @@ phases:
       - REPOSITORY_URI=$ECR_REPOSITORY_URI
       - echo "Repository URI - $REPOSITORY_URI"
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-      - GIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${GIT_HASH:-latest}
+      - IMAGE_TAG=${CODEBUILD_BUILD_NUMBER:-latest}
   build:
     commands:
       - echo Build started on `date`
