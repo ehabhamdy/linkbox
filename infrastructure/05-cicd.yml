@@ -110,12 +110,12 @@ Resources:
         EnvironmentVariables:
           - Name: AWS_DEFAULT_REGION
             Value: !Ref AWS::Region
-          - Name: AWS_ACCOUNT_ID
-            Value: !Ref AWS::AccountId
-          - Name: IMAGE_REPO_NAME
+          - Name: IMAGE_NAME
             Value: !Sub '${EnvironmentName}-backend'
+          - Name: ECR_REPOSITORY_URI
+            Value: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:ECRRepositoryURI" } } 
       Source:
-        Type: CODEPIPELINE
+        Type: CODEPIPELINE # The source code settings are specified in the source action of a pipeline in CodePipeline.
         BuildSpec: cicd/buildspec-backend.yml
       LogsConfig:
         CloudWatchLogs:

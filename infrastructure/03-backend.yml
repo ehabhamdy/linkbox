@@ -69,7 +69,7 @@ Resources:
     DeletionPolicy: Delete
     UpdateReplacePolicy: Retain
     Properties:
-      RepositoryName: !Sub '${EnvironmentName}-backend'
+      RepositoryName: !Ref EnvironmentName
       EmptyOnDelete: true
       ImageScanningConfiguration:
         ScanOnPush: true
