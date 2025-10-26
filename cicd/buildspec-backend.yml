@@ -6,27 +6,25 @@ phases:
       - echo Logging in to Amazon ECR...
       - aws --version
       - echo "AWS Region - $AWS_DEFAULT_REGION"
-      - echo "Image Name - $IMAGE_NAME"
       - echo "ECR Repository URI from CloudFormation - $ECR_REPOSITORY_URI"
       - REPOSITORY_URI=$ECR_REPOSITORY_URI
       - echo "Repository URI - $REPOSITORY_URI"
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
       - GIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${GIT_HASH:-latest}
-      - echo "new build"
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI/$IMAGE_NAME:$IMAGE_TAG -t $REPOSITORY_URI/$IMAGE_NAME:latest ./backend
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG -t $REPOSITORY_URI:latest ./backend
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker images...
-      - docker push $REPOSITORY_URI/$IMAGE_NAME:$IMAGE_TAG
-      - docker push $REPOSITORY_URI/$IMAGE_NAME:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
       - echo Creating imagedefinitions.json for CodeDeploy
-      - printf '{"ImageURI":"%s"}' $REPOSITORY_URI/$IMAGE_NAME:$IMAGE_TAG > imagedefinitions.json
+      - printf '{"ImageURI":"%s"}' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
 
 artifacts:
