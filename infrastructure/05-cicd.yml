@@ -111,7 +111,7 @@ Resources:
           - Name: AWS_DEFAULT_REGION
             Value: !Ref AWS::Region
           - Name: IMAGE_NAME
-            Value: !Sub '${EnvironmentName}-backend'
+            Value: 'backend'
           - Name: ECR_REPOSITORY_URI
             Value: { "Fn::ImportValue": { "Fn::Sub": "${EnvironmentName}:ECRRepositoryURI" } } 
       Source:

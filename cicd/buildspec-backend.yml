@@ -18,17 +18,15 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $IMAGE_NAME ./backend
-      # - docker tag $IMAGE_NAME:latest $REPOSITORY_URI:$IMAGE_TAG
-      # - docker tag $IMAGE_NAME:latest $REPOSITORY_URI:latest
+      - docker build -t $REPOSITORY_URI/$IMAGE_NAME:$IMAGE_TAG -t $REPOSITORY_URI/$IMAGE_NAME:latest ./backend
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker images...
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI/$IMAGE_NAME:$IMAGE_TAG
+      - docker push $REPOSITORY_URI/$IMAGE_NAME:latest
       - echo Creating imagedefinitions.json for CodeDeploy
-      - printf '{"ImageURI":"%s"}' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - printf '{"ImageURI":"%s"}' $REPOSITORY_URI/$IMAGE_NAME:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
 
 artifacts:
