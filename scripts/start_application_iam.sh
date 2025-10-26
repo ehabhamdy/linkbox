@@ -104,4 +104,3 @@ else
     docker logs linkbox-backend
     exit 1
 fi
-
