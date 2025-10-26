@@ -412,13 +412,10 @@ aws ssm send-command \
   --document-name "AWS-RunShellScript" \
   --parameters 'commands=["docker logs linkbox-backend --tail 100"]'
 ```
-
-**Tips:**
-- Replace `<instance-id>` with your actual EC2 instance ID
-- Replace `<command-id>` with the CommandId returned from send-command
-- To get instance ID: `aws ec2 describe-instances --filters "Name=tag:Application,Values=backend" --query 'Reservations[0].Instances[0].InstanceId' --output text`
-- For immediate results, use `--query 'StandardOutputContent'` on list-command-invocations
-- Add `--region <region>` if working in a non-default region
+# Example to get container environment variables
+```bash
+aws ssm list-command-invocations --command-id $(aws ssm send-command --instance-ids <instance-id> --document-name "AWS-RunShellScript" --comment "Check env vars in container" --parameters 'commands=["docker exec linkbox-backend printenv"]' --query 'Command.CommandId' --output text) --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text
+```
 
 ### Database connection issues
 
