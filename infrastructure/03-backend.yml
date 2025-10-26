@@ -170,7 +170,7 @@ Resources:
       Port: 80
       Protocol: HTTP
       TargetType: instance
-      HealthCheckPath: /health
+      HealthCheckPath: /api/health
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
