@@ -1,193 +1,263 @@
-# LinkBox Documentation Map
+# 📚 LinkBox Documentation Map
 
-This guide helps you find the right documentation for your needs.
-
----
-
-## 📘 Start Here
-
-**[README.md](README.md)** - **Main Documentation (START HERE!)**
-- Complete project overview
-- Quick start guide (30-minute deployment)
-- Full deployment walkthrough
-- Local development setup
-- CI/CD pipeline explanation
-- Configuration guide
-- Stack updates procedures
-- Monitoring & troubleshooting
-- Cost estimation
-- Security overview
-- All essential commands
-
-**This is your single source of truth for the LinkBox project.**
+Quick reference guide to all documentation in this project.
 
 ---
 
-## 📁 Specialized Documentation
+## 🚀 Getting Started
 
-### Infrastructure
+Start here if you're new to the project:
 
-**[infrastructure/README.md](infrastructure/README.md)** - Infrastructure Technical Reference
-- CloudFormation templates details
-- Resource specifications
-- Parameters reference
-- Stack-by-stack breakdown
-- Post-deployment steps
-
-**[infrastructure/UPDATE-GUIDE.md](infrastructure/UPDATE-GUIDE.md)** - Stack Update Guide
-- How to update deployed stacks
-- Update scenarios and examples
-- Troubleshooting updates
-- Rollback procedures
-
-**[infrastructure/CICD-VERIFICATION.md](infrastructure/CICD-VERIFICATION.md)** - CI/CD Deep Dive
-- Complete pipeline verification
-- Buildspec and appspec details
-- Security best practices
-- Common issues and solutions
-
-### Backend & Database
-
-**[backend/LOCAL-DEVELOPMENT.md](backend/LOCAL-DEVELOPMENT.md)** - Backend Development Guide
-- Docker Compose setup
-- Database configuration
-- Testing guide
-- Troubleshooting local issues
-
-**[DATABASE-CONNECTIVITY.md](DATABASE-CONNECTIVITY.md)** - Database Connection Details
-- Password-based authentication
-- IAM authentication
-- Connection flow diagrams
-
-**[IAM-DATABASE-AUTHENTICATION.md](IAM-DATABASE-AUTHENTICATION.md)** - IAM Auth Setup
-- Benefits of IAM authentication
-- Implementation guide
-- Setup scripts usage
-
-### Architecture
-
-**[infrastructure-diagram.md](infrastructure-diagram.md)** - Visual Architecture
-- Mermaid diagrams
-- Component relationships
-- Data flow
+1. **[README.md](../README.md)** - Project overview and quick start
+2. **[backend/LOCAL-DEVELOPMENT.md](../backend/LOCAL-DEVELOPMENT.md)** - Set up local dev environment
+3. **[infrastructure/README.md](../infrastructure/README.md)** - Infrastructure overview
 
 ---
 
-## 🎯 Documentation by Task
+## 📂 Documentation by Topic
 
-### "I want to deploy LinkBox"
-→ **[README.md](README.md)** - Quick Start & Deployment Guide sections
+### 🗄️ Database
 
-### "I want to develop locally"
-→ **[README.md](README.md)** - Local Development section
-→ **[backend/LOCAL-DEVELOPMENT.md](backend/LOCAL-DEVELOPMENT.md)** (for details)
+**Main Guide:**
+- **[DATABASE-GUIDE.md](DATABASE-GUIDE.md)** ⭐ Complete database guide
+  - Local development setup
+  - Production deployment
+  - Password vs IAM authentication
+  - Security best practices
+  - Troubleshooting
 
-### "I need to understand the infrastructure"
-→ **[README.md](README.md)** - Architecture Overview
-→ **[infrastructure/README.md](infrastructure/README.md)** - Technical reference
-→ **[infrastructure-diagram.md](infrastructure-diagram.md)** - Visual diagrams
-
-### "I need to update my deployed stack"
-→ **[README.md](README.md)** - Stack Updates section
-→ **[infrastructure/UPDATE-GUIDE.md](infrastructure/UPDATE-GUIDE.md)** - Detailed procedures
-
-### "My deployment failed"
-→ **[README.md](README.md)** - Monitoring & Troubleshooting section
-→ **[infrastructure/CICD-VERIFICATION.md](infrastructure/CICD-VERIFICATION.md)** - CI/CD issues
-
-### "I need to understand CI/CD"
-→ **[README.md](README.md)** - CI/CD Pipeline section
-→ **[infrastructure/CICD-VERIFICATION.md](infrastructure/CICD-VERIFICATION.md)** - Deep dive
-
-### "I want to use IAM database authentication"
-→ **[IAM-DATABASE-AUTHENTICATION.md](IAM-DATABASE-AUTHENTICATION.md)** - Complete guide
-→ **[DATABASE-CONNECTIVITY.md](DATABASE-CONNECTIVITY.md)** - Connection details
+**Quick References:**
+- **[IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md)** - Step-by-step IAM auth deployment
 
 ---
 
-## 📂 File Organization
+### 🏗️ Infrastructure
 
-```
-linkbox/
-├── README.md                              # 🌟 MAIN DOCUMENTATION (START HERE)
-├── DOCUMENTATION-MAP.md                   # This file - documentation guide
-│
-├── Specialized Guides:
-│   ├── infrastructure-diagram.md          # Visual architecture
-│   ├── DATABASE-CONNECTIVITY.md           # Database connection guide
-│   └── IAM-DATABASE-AUTHENTICATION.md     # IAM auth setup
-│
-├── infrastructure/
-│   ├── README.md                          # Infrastructure technical reference
-│   ├── UPDATE-GUIDE.md                    # Stack update procedures
-│   └── CICD-VERIFICATION.md               # CI/CD verification & troubleshooting
-│
-└── backend/
-    └── LOCAL-DEVELOPMENT.md               # Backend development guide
-```
+**Setup:**
+- **[infrastructure/README.md](../infrastructure/README.md)** - Infrastructure overview
+- **[infrastructure/deploy.sh](../infrastructure/deploy.sh)** - Main deployment script
+
+**Updates:**
+- **[infrastructure/UPDATE-GUIDE.md](../infrastructure/UPDATE-GUIDE.md)** - How to update stacks
+- **[infrastructure/quick-update.sh](../infrastructure/quick-update.sh)** - Quick update script
+
+**Architecture:**
+- **[architecture.png](../architecture.png)** - System architecture diagram
+- **[infrastructure-diagram.md](../infrastructure-diagram.md)** - Text-based diagrams
+- **[infrastructure/diagram-mermaid.md](../infrastructure/diagram-mermaid.md)** - Mermaid diagrams
 
 ---
 
-## 🔍 Quick Search
+### 🔧 Backend Development
 
-### Commands & Scripts
-- All commands: **[README.md](README.md)** → "Useful Commands Reference"
-- Deployment: **[README.md](README.md)** → "Deployment Guide"
-- Updates: **[infrastructure/UPDATE-GUIDE.md](infrastructure/UPDATE-GUIDE.md)**
+**Local Development:**
+- **[backend/LOCAL-DEVELOPMENT.md](../backend/LOCAL-DEVELOPMENT.md)** - Complete local setup guide
+- **[backend/README.md](../backend/README.md)** - Backend overview
+- **[backend/ENV.EXAMPLE](../backend/ENV.EXAMPLE)** - Environment variables
 
-### Troubleshooting
-- General: **[README.md](README.md)** → "Monitoring & Troubleshooting"
-- CI/CD issues: **[infrastructure/CICD-VERIFICATION.md](infrastructure/CICD-VERIFICATION.md)** → "Common Issues"
-- Local dev issues: **[backend/LOCAL-DEVELOPMENT.md](backend/LOCAL-DEVELOPMENT.md)** → "Troubleshooting"
-
-### Configuration
-- All configs: **[README.md](README.md)** → "Configuration"
-- Infrastructure params: **[infrastructure/README.md](infrastructure/README.md)** → "Parameters Reference"
-- Backend env vars: **[backend/LOCAL-DEVELOPMENT.md](backend/LOCAL-DEVELOPMENT.md)** → "Configuration"
-
-### Cost & Security
-- Cost breakdown: **[README.md](README.md)** → "Cost Estimation"
-- Security features: **[README.md](README.md)** → "Security"
-- IAM policies: **[infrastructure/INFRASTRUCTURE-FIXES.md](infrastructure/INFRASTRUCTURE-FIXES.md)**
+**Code:**
+- `backend/app/` - Application code
+- `backend/tests/` - Test suite
+- `backend/pyproject.toml` - Dependencies
 
 ---
 
-## 📝 Notes
+### 🎨 Frontend Development
 
-### Documentation Cleanup
+**Setup:**
+- **[frontend/README.md](../frontend/README.md)** - Frontend overview
+- `frontend/package.json` - Dependencies
+- `frontend/vite.config.ts` - Vite configuration
 
-**Removed (Consolidated into README.md):**
-- ✅ DEPLOYMENT-GUIDE.md → Now in README.md
-- ✅ DEPLOYMENT-FIX.md → Troubleshooting in README.md
-- ✅ CICD-SETUP.md → CI/CD section in README.md
-- ✅ UPDATE-SCRIPTS-SUMMARY.md → Stack Updates in README.md
-- ✅ WEBHOOK-SETUP.md → CICD-VERIFICATION.md
-- ✅ cicd/BUILDSPEC-FIX.md → No longer needed
-- ✅ infrastructure/INFRASTRUCTURE-FIXES.md → Best practices incorporated
-- ✅ infrastructure/SSM-PARAMETER-NOTES.md → No longer needed
-
-**Kept (Deep-dive technical details):**
-- ✅ infrastructure/README.md - Technical reference
-- ✅ infrastructure/UPDATE-GUIDE.md - Detailed update procedures
-- ✅ infrastructure/CICD-VERIFICATION.md - CI/CD deep dive
-- ✅ backend/LOCAL-DEVELOPMENT.md - Detailed dev setup
-- ✅ DATABASE-CONNECTIVITY.md - DB connection details
-- ✅ IAM-DATABASE-AUTHENTICATION.md - IAM auth guide
-- ✅ infrastructure-diagram.md - Visual architecture
+**Code:**
+- `frontend/src/` - React application
+- `frontend/src/components/` - React components
 
 ---
 
-## 🎯 Recommendation
+### 🔄 CI/CD
 
-**For 90% of use cases:**
-- Start and stay in **[README.md](README.md)**
-- It has everything you need from deployment to troubleshooting
+**Pipeline:**
+- **[infrastructure/05-cicd.yml](../infrastructure/05-cicd.yml)** - CodePipeline CloudFormation
+- **[cicd/buildspec-backend.yml](../cicd/buildspec-backend.yml)** - Backend build spec
+- **[cicd/buildspec-frontend.yml](../cicd/buildspec-frontend.yml)** - Frontend build spec
 
-**For advanced/specific needs:**
-- Refer to specialized documentation linked above
-- Each document is focused on its specific domain
+**Deployment:**
+- **[appspec.yml](../appspec.yml)** - CodeDeploy configuration
+- **[scripts/](../scripts/)** - Deployment scripts
+- **[infrastructure/CICD-VERIFICATION.md](../infrastructure/CICD-VERIFICATION.md)** - CI/CD verification
 
 ---
 
-**Happy building! 🚀**
+### 🔐 Security
+
+**IAM Authentication:**
+- **[DATABASE-GUIDE.md](DATABASE-GUIDE.md)** - See "IAM Authentication Setup" section
+- **[IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md)** - Deployment guide
+- **[backend/app/utils/db_iam_auth.py](../backend/app/utils/db_iam_auth.py)** - Implementation
+
+**Best Practices:**
+- See database guide security section
+- See infrastructure security groups configuration
+
+---
+
+## 📑 Documentation by Role
+
+### 👨‍💻 For Developers
+
+**First Time Setup:**
+1. [README.md](../README.md) - Overview
+2. [backend/LOCAL-DEVELOPMENT.md](../backend/LOCAL-DEVELOPMENT.md) - Local setup
+3. [DATABASE-GUIDE.md](DATABASE-GUIDE.md) - Database setup
+
+**Daily Development:**
+- [backend/README.md](../backend/README.md) - Backend API
+- [frontend/README.md](../frontend/README.md) - Frontend app
+- [backend/ENV.EXAMPLE](../backend/ENV.EXAMPLE) - Configuration
+
+---
+
+### 🏗️ For DevOps/Infrastructure
+
+**Deployment:**
+1. [infrastructure/README.md](../infrastructure/README.md) - Overview
+2. [infrastructure/deploy.sh](../infrastructure/deploy.sh) - Deploy script
+3. [DATABASE-GUIDE.md](DATABASE-GUIDE.md) - Database setup
+
+**Updates:**
+- [infrastructure/UPDATE-GUIDE.md](../infrastructure/UPDATE-GUIDE.md) - Update guide
+- [infrastructure/quick-update.sh](../infrastructure/quick-update.sh) - Quick updates
+
+**CI/CD:**
+- [infrastructure/05-cicd.yml](../infrastructure/05-cicd.yml) - Pipeline config
+- [infrastructure/CICD-VERIFICATION.md](../infrastructure/CICD-VERIFICATION.md) - Verification
+
+---
+
+### 🔒 For Security/Compliance
+
+**Security Setup:**
+- [DATABASE-GUIDE.md](DATABASE-GUIDE.md) - Database security
+- [docs/IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md) - IAM authentication
+
+**Infrastructure Security:**
+- [infrastructure/01-network.yml](../infrastructure/01-network.yml) - VPC & network isolation
+- [infrastructure/02-database.yml](../infrastructure/02-database.yml) - RDS security
+- [infrastructure/03-backend.yml](../infrastructure/03-backend.yml) - IAM roles & policies
+
+---
+
+## 📊 Quick Reference Tables
+
+### Environment-Specific Guides
+
+| Environment | Guide | Purpose |
+|------------|-------|---------|
+| **Local** | [backend/LOCAL-DEVELOPMENT.md](../backend/LOCAL-DEVELOPMENT.md) | Dev environment setup |
+| **AWS Production** | [DATABASE-GUIDE.md](DATABASE-GUIDE.md) | Production deployment |
+| **CI/CD** | [infrastructure/CICD-VERIFICATION.md](../infrastructure/CICD-VERIFICATION.md) | Pipeline setup |
+
+### By Infrastructure Component
+
+| Component | CloudFormation | Documentation |
+|-----------|----------------|---------------|
+| **Network** | [infrastructure/01-network.yml](../infrastructure/01-network.yml) | VPC, subnets, NAT |
+| **Database** | [infrastructure/02-database.yml](../infrastructure/02-database.yml) | [DATABASE-GUIDE.md](DATABASE-GUIDE.md) |
+| **Backend** | [infrastructure/03-backend.yml](../infrastructure/03-backend.yml) | ALB, ASG, EC2 |
+| **Frontend** | [infrastructure/04-frontend.yml](../infrastructure/04-frontend.yml) | S3, CloudFront |
+| **CI/CD** | [infrastructure/05-cicd.yml](../infrastructure/05-cicd.yml) | CodePipeline, CodeDeploy |
+
+### By Task
+
+| Task | Documentation |
+|------|---------------|
+| **First time setup** | [README.md](../README.md) |
+| **Local development** | [backend/LOCAL-DEVELOPMENT.md](../backend/LOCAL-DEVELOPMENT.md) |
+| **Deploy infrastructure** | [infrastructure/README.md](../infrastructure/README.md) |
+| **Deploy with password auth** | [DATABASE-GUIDE.md](DATABASE-GUIDE.md) → "Password Authentication" |
+| **Deploy with IAM auth** | [IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md) |
+| **Update infrastructure** | [infrastructure/UPDATE-GUIDE.md](../infrastructure/UPDATE-GUIDE.md) |
+| **Troubleshoot database** | [DATABASE-GUIDE.md](DATABASE-GUIDE.md) → "Troubleshooting" |
+| **Configure CI/CD** | [infrastructure/CICD-VERIFICATION.md](../infrastructure/CICD-VERIFICATION.md) |
+
+---
+
+## 🔍 Finding What You Need
+
+### "I want to..."
+
+**...set up local development**
+→ [backend/LOCAL-DEVELOPMENT.md](../backend/LOCAL-DEVELOPMENT.md)
+
+**...deploy to AWS for the first time**
+→ [infrastructure/README.md](../infrastructure/README.md) then [DATABASE-GUIDE.md](DATABASE-GUIDE.md)
+
+**...use IAM database authentication**
+→ [IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md)
+
+**...update infrastructure**
+→ [infrastructure/UPDATE-GUIDE.md](../infrastructure/UPDATE-GUIDE.md)
+
+**...troubleshoot database connection**
+→ [DATABASE-GUIDE.md](DATABASE-GUIDE.md) → Troubleshooting section
+
+**...understand the architecture**
+→ [architecture.png](../architecture.png) and [infrastructure-diagram.md](../infrastructure-diagram.md)
+
+**...configure CI/CD pipeline**
+→ [infrastructure/05-cicd.yml](../infrastructure/05-cicd.yml) and [infrastructure/CICD-VERIFICATION.md](../infrastructure/CICD-VERIFICATION.md)
+
+---
+
+## 📝 Deprecated/Legacy Files
+
+These files are kept for reference but are superseded by newer documentation:
+
+- `DATABASE-CONNECTIVITY.md` → See [DATABASE-GUIDE.md](DATABASE-GUIDE.md)
+- `DATABASE-UPDATES-SUMMARY.md` → See [DATABASE-GUIDE.md](DATABASE-GUIDE.md)
+- `IAM-DATABASE-AUTHENTICATION.md` → See [DATABASE-GUIDE.md](DATABASE-GUIDE.md) and [IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md)
+- `IAM-IMPLEMENTATION-SUMMARY.md` → See [IAM-AUTH-DEPLOYMENT-GUIDE.md](../IAM-AUTH-DEPLOYMENT-GUIDE.md)
+- `legacy/` directory → Old infrastructure templates (pre-modular)
+
+---
+
+## 📚 External Resources
+
+### AWS Documentation
+- [RDS PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html)
+- [IAM Database Authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html)
+- [CloudFormation](https://docs.aws.amazon.com/cloudformation/)
+- [CodePipeline](https://docs.aws.amazon.com/codepipeline/)
+
+### Technology Stack
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [React](https://react.dev/)
+- [PostgreSQL](https://www.postgresql.org/docs/)
+- [SQLAlchemy](https://docs.sqlalchemy.org/)
+
+---
+
+## 🔄 Keeping Documentation Updated
+
+When you make changes:
+
+1. **Update relevant guide** - Update the main guide for that topic
+2. **Update this map** - Add new docs here if needed
+3. **Update README** - Keep main README in sync
+4. **Check cross-references** - Ensure links still work
+
+---
+
+## ❓ Can't Find What You Need?
+
+1. **Search by keyword** - Use your IDE's search across all .md files
+2. **Check this map** - Review sections above
+3. **Check README** - Often has quick links
+4. **Check code comments** - Implementation details in source files
+
+---
+
+**Last Updated:** October 2025  
+**Maintained By:** LinkBox Team
 
