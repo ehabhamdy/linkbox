@@ -387,7 +387,38 @@ aws ssm send-command \
   --instance-ids <instance-id> \
   --document-name "AWS-RunShellScript" \
   --parameters 'commands=["cat /var/log/cloud-init-output.log"]'
+
+# Check Docker container environment variables
+aws ssm send-command \
+  --instance-ids <instance-id> \
+  --document-name "AWS-RunShellScript" \
+  --comment "Check env vars in container" \
+  --parameters 'commands=["docker exec linkbox-backend printenv"]'
+
+# View command results (use command-id from previous output)
+aws ssm list-command-invocations \
+  --command-id <command-id> \
+  --details
+
+# Check if container is running
+aws ssm send-command \
+  --instance-ids <instance-id> \
+  --document-name "AWS-RunShellScript" \
+  --parameters 'commands=["docker ps -a"]'
+
+# Check container logs
+aws ssm send-command \
+  --instance-ids <instance-id> \
+  --document-name "AWS-RunShellScript" \
+  --parameters 'commands=["docker logs linkbox-backend --tail 100"]'
 ```
+
+**Tips:**
+- Replace `<instance-id>` with your actual EC2 instance ID
+- Replace `<command-id>` with the CommandId returned from send-command
+- To get instance ID: `aws ec2 describe-instances --filters "Name=tag:Application,Values=backend" --query 'Reservations[0].Instances[0].InstanceId' --output text`
+- For immediate results, use `--query 'StandardOutputContent'` on list-command-invocations
+- Add `--region <region>` if working in a non-default region
 
 ### Database connection issues
 
